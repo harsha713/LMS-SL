@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saaradaa Learknowations Pvt. Ltd. - Worksheets</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">Saaradaa Learknowations Pvt. Ltd.</div>   
+        <nav>
+            <ul>
+                <li><a href="index.html">Home</a></li>
+                <li><a href="grades.html">Grades</a></li>
+                <li><a href="worksheets.html">Worksheets</a></li>
+                <li><a href="quiz.html">Quiz</a></li>
+                <li><a href="books.html">Books</a></li>
+                <li><a href="parent_child.html">Parent-Child</a></li>
+                <!-- <li><a href="admin.html">Admin</a></li> -->
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Worksheets</h1>
+        <p>Practice with our interactive worksheets!</p>
+
+        <div id="worksheets-container" class="grid">
+            <!-- Worksheets will be loaded here dynamically -->
+        </div>
+
+        <div id="worksheet-form" style="display: none;">
+            <form id="worksheet-form-element">
+                <div id="worksheet-questions">
+                    <!-- Worksheet questions will be loaded here -->
+                </div>
+                <button type="submit" class="btn">Submit Worksheet</button>
+            </form>
+        </div>
+
+        <div id="worksheet-result" style="display: none;">
+            <h2>Your Score: <span id="worksheet-score"></span></h2>
+            <p id="worksheet-message"></p>
+            <button id="back-to-worksheets" class="btn">Back to Worksheets</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; Saaradaa Learknowations Pvt. Ltd.</p>
+    </footer>
+
+    <script src="js/data.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

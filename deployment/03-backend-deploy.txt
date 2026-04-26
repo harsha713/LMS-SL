@@ -1,0 +1,70 @@
+=====================================================
+ BACKEND DEPLOYMENT WITH PM2
+ Express.js API Server
+=====================================================
+
+STEP 1: Navigate to backend directory
+--------------------------------------
+cd /var/www/lms/backend
+
+STEP 2: Ensure dependencies are installed
+-------------------------------------------
+npm install --production
+
+STEP 3: Verify .env file is configured
+----------------------------------------
+cat .env
+
+It should contain:
+  ADMIN_PASSWORD=your_chosen_password
+  JWT_SECRET=your_random_secret
+  PORT=3001
+
+STEP 4: Test the server manually first
+----------------------------------------
+node server.js
+
+You should see:
+  LMS Backend running on http://localhost:3001
+
+Test it:
+  curl http://localhost:3001/api/health
+
+Press Ctrl+C to stop.
+
+STEP 5: Start with PM2
+------------------------
+pm2 start server.js --name "lms-backend"
+
+Verify it's running:
+  pm2 status
+
+You should see "lms-backend" with status "online".
+
+STEP 6: Set PM2 to start on boot
+----------------------------------
+pm2 startup
+(follow the command it outputs)
+
+pm2 save
+
+STEP 7: Useful PM2 commands
+-----------------------------
+pm2 status                  - Check if running
+pm2 logs lms-backend        - View logs
+pm2 restart lms-backend     - Restart after changes
+pm2 stop lms-backend        - Stop the server
+pm2 delete lms-backend      - Remove from PM2
+
+STEP 8: Verify uploads directory exists
+-----------------------------------------
+ls -la /var/www/lms/backend/uploads/classes/
+ls -la /var/www/lms/backend/uploads/shorts/
+
+If they don't exist:
+  mkdir -p /var/www/lms/backend/uploads/{classes,shorts,thumbnails}
+
+STEP 9: Set proper permissions
+-------------------------------
+sudo chown -R $USER:$USER /var/www/lms/backend/uploads
+chmod -R 755 /var/www/lms/backend/uploads

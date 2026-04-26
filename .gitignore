@@ -1,0 +1,6 @@
+videos/
+*.mov
+*.mp4
+node_modules/
+dist/
+.env

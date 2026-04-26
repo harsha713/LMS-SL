@@ -1,0 +1,45 @@
+=====================================================
+ FRONTEND BUILD & DEPLOY
+ Vite React Production Build
+=====================================================
+
+STEP 1: Navigate to frontend directory
+----------------------------------------
+cd /var/www/lms/frontend
+
+STEP 2: Install dependencies
+------------------------------
+npm install
+
+STEP 3: Configure API URL for production
+------------------------------------------
+Create/edit .env.production in the frontend directory:
+
+  echo 'VITE_API_URL=https://lms.yourdomain.com/api' > .env.production
+
+Replace "lms.yourdomain.com" with your actual domain/subdomain.
+
+If you're NOT using a domain and just using IP:
+  echo 'VITE_API_URL=http://YOUR_SERVER_IP:3001/api' > .env.production
+
+STEP 4: Build for production
+------------------------------
+npm run build
+
+This creates a "dist" folder with optimized static files.
+
+STEP 5: Copy to Nginx web root
+--------------------------------
+sudo mkdir -p /var/www/lms/public
+sudo cp -r dist/* /var/www/lms/public/
+
+STEP 6: Verify the build
+--------------------------
+ls -la /var/www/lms/public/
+
+You should see:
+  index.html
+  assets/   (contains JS, CSS, images)
+
+Done. The frontend is now a set of static files.
+Nginx will serve them (see 05-nginx-config.txt).

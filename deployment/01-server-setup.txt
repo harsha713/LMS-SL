@@ -1,0 +1,80 @@
+=====================================================
+ SERVER SETUP - Ubuntu LTS
+ Saaradaa Learknowations LMS
+=====================================================
+
+STEP 1: System Update
+---------------------
+sudo apt update && sudo apt upgrade -y
+
+STEP 2: Install Node.js 20 LTS
+-------------------------------
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+Verify:
+  node -v   (should show v20.x.x)
+  npm -v    (should show 10.x.x)
+
+STEP 3: Install ffmpeg (for video transcoding)
+-----------------------------------------------
+sudo apt install -y ffmpeg
+
+Verify:
+  ffmpeg -version
+
+STEP 4: Install Nginx
+----------------------
+sudo apt install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+STEP 5: Install PM2 (process manager for Node.js)
+--------------------------------------------------
+sudo npm install -g pm2
+
+STEP 6: Create directory structure
+-----------------------------------
+sudo mkdir -p /var/www/lms
+sudo chown -R $USER:$USER /var/www/lms
+
+STEP 7: Copy project files to server
+--------------------------------------
+Option A - If on the same machine:
+  cp -r /path/to/LMS_2/frontend /var/www/lms/frontend
+  cp -r /path/to/LMS_2/backend /var/www/lms/backend
+
+Option B - From another machine via SCP:
+  scp -r LMS_2/frontend user@server-ip:/var/www/lms/
+  scp -r LMS_2/backend user@server-ip:/var/www/lms/
+
+STEP 8: Install backend dependencies
+--------------------------------------
+cd /var/www/lms/backend
+npm install --production
+
+STEP 9: Configure environment variables
+-----------------------------------------
+Edit /var/www/lms/backend/.env:
+
+  ADMIN_PASSWORD=YOUR_STRONG_PASSWORD_HERE
+  JWT_SECRET=CHANGE_THIS_TO_A_RANDOM_STRING
+  PORT=3001
+
+Generate a random JWT secret:
+  openssl rand -hex 32
+
+STEP 10: Build the frontend
+-----------------------------
+cd /var/www/lms/frontend
+npm install
+npm run build
+
+This creates a "dist" folder with the production build.
+Copy it to Nginx web root:
+  sudo cp -r dist/* /var/www/lms/public/
+  sudo mkdir -p /var/www/lms/public
+
+(Or you can point Nginx directly at the dist folder)
+
+Done. Proceed to the other guides for backend, Nginx, and Cloudflare setup.

@@ -1,0 +1,107 @@
+=====================================================
+ NGINX CONFIGURATION
+ Serving frontend + proxying API
+=====================================================
+
+STEP 1: Create Nginx config file
+----------------------------------
+sudo nano /etc/nginx/sites-available/lms
+
+Paste the following (replace YOUR_DOMAIN with your domain):
+
+----------- START OF CONFIG -----------
+
+server {
+    listen 80;
+    server_name YOUR_DOMAIN;   # e.g., lms.e2eindia.org
+
+    # Max upload size (for video uploads)
+    client_max_body_size 2G;
+
+    # Timeouts for large uploads
+    proxy_read_timeout 600s;
+    proxy_send_timeout 600s;
+    send_timeout 600s;
+
+    # Frontend - serve static files
+    root /var/www/lms/public;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API - proxy to Express backend
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # For large file uploads
+        client_max_body_size 2G;
+        proxy_request_buffering off;
+    }
+
+    # Video uploads - serve directly via Nginx (faster)
+    location /uploads/ {
+        alias /var/www/lms/backend/uploads/;
+
+        # Enable byte-range requests for video streaming
+        add_header Accept-Ranges bytes;
+
+        # Cache static video files
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+
+        # CORS headers
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript
+               text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1000;
+}
+
+----------- END OF CONFIG -----------
+
+
+STEP 2: Enable the site
+-------------------------
+sudo ln -sf /etc/nginx/sites-available/lms /etc/nginx/sites-enabled/lms
+
+STEP 3: Remove default site (optional)
+----------------------------------------
+sudo rm -f /etc/nginx/sites-enabled/default
+
+STEP 4: Test Nginx config
+---------------------------
+sudo nginx -t
+
+If it says "syntax is ok" and "test is successful", proceed.
+
+STEP 5: Restart Nginx
+-----------------------
+sudo systemctl restart nginx
+
+STEP 6: Verify
+----------------
+curl http://localhost
+(should return the HTML of your LMS homepage)
+
+curl http://localhost/api/health
+(should return {"status":"ok",...})
+
+
+IMPORTANT NOTES
+-----------------
+- client_max_body_size is set to 2G for video uploads
+- The /uploads/ location serves video files directly via Nginx
+  which is much faster than proxying through Node.js
+- try_files with /index.html enables React Router's client-side routing
+- If you're behind Cloudflare Tunnel, SSL is handled by Cloudflare
+  so you don't need certbot/Let's Encrypt
