@@ -70,6 +70,36 @@ router.post('/', authMiddleware, upload.single('video'), (req, res) => {
     }
 });
 
+// POST /api/shorts/:id/like - Like a short (public, no auth)
+router.post('/:id/like', (req, res) => {
+    const db = getDb();
+    const short = db.prepare('SELECT * FROM shorts WHERE id = ?').get(req.params.id);
+
+    if (!short) {
+        return res.status(404).json({ message: 'Short not found' });
+    }
+
+    db.prepare('UPDATE shorts SET likes = likes + 1 WHERE id = ?').run(req.params.id);
+    const updated = db.prepare('SELECT likes FROM shorts WHERE id = ?').get(req.params.id);
+
+    res.json({ likes: updated.likes });
+});
+
+// POST /api/shorts/:id/unlike - Unlike a short (public, no auth)
+router.post('/:id/unlike', (req, res) => {
+    const db = getDb();
+    const short = db.prepare('SELECT * FROM shorts WHERE id = ?').get(req.params.id);
+
+    if (!short) {
+        return res.status(404).json({ message: 'Short not found' });
+    }
+
+    db.prepare('UPDATE shorts SET likes = MAX(0, likes - 1) WHERE id = ?').run(req.params.id);
+    const updated = db.prepare('SELECT likes FROM shorts WHERE id = ?').get(req.params.id);
+
+    res.json({ likes: updated.likes });
+});
+
 // DELETE /api/shorts/:id - Delete a short (auth required)
 router.delete('/:id', authMiddleware, (req, res) => {
     const db = getDb();

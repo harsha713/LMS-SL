@@ -40,7 +40,7 @@ export default function Navbar() {
                         <img src={logo} alt="SL" className="navbar__logo-img" />
                         <div className="navbar__logo-text">
                             <span className="navbar__brand">Saaradaa</span>
-                            <span className="navbar__sub">Learknowations</span>
+                            <span className="navbar__sub">Learknowations Pvt. Ltd.</span>
                         </div>
                     </Link>
 

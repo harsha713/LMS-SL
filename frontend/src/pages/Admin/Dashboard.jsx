@@ -70,21 +70,31 @@ function AdminLayout({ children, title, subtitle }) {
 }
 
 export default function AdminDashboard() {
-    const [stats, setStats] = useState({ classes: 0, shorts: 0, byGrade: {} });
+    const [stats, setStats] = useState({ classes: 0, shorts: 0, totalLikes: 0, totalComments: 0, byGrade: {}, recentComments: [] });
 
     useEffect(() => {
         const token = localStorage.getItem('admin_token');
         Promise.all([
             fetch(`${API_BASE}/classes`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
             fetch(`${API_BASE}/shorts`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        ]).then(([classData, shortData]) => {
+            fetch(`${API_BASE}/comments/all`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).catch(() => ({ comments: [], total: 0 })),
+        ]).then(([classData, shortData, commentData]) => {
             const classes = classData.classes || [];
             const shorts = shortData.shorts || [];
+            const comments = commentData.comments || [];
             const byGrade = {};
             classes.forEach(c => {
                 byGrade[c.grade] = (byGrade[c.grade] || 0) + 1;
             });
-            setStats({ classes: classes.length, shorts: shorts.length, byGrade });
+            const totalLikes = shorts.reduce((sum, s) => sum + (s.likes || 0), 0);
+            setStats({
+                classes: classes.length,
+                shorts: shorts.length,
+                totalLikes,
+                totalComments: commentData.total || comments.length,
+                byGrade,
+                recentComments: comments.slice(0, 10),
+            });
         }).catch(() => { });
     }, []);
 
@@ -100,13 +110,17 @@ export default function AdminDashboard() {
                     <div className="admin-stat-card__label">Shorts</div>
                 </div>
                 <div className="glass-card admin-stat-card">
-                    <div className="admin-stat-card__value gradient-text">{Object.keys(stats.byGrade).length}</div>
-                    <div className="admin-stat-card__label">Grades with Content</div>
+                    <div className="admin-stat-card__value" style={{ color: '#f472b6' }}>{stats.totalLikes}</div>
+                    <div className="admin-stat-card__label">Total Likes</div>
+                </div>
+                <div className="glass-card admin-stat-card">
+                    <div className="admin-stat-card__value" style={{ color: '#38bdf8' }}>{stats.totalComments}</div>
+                    <div className="admin-stat-card__label">Total Comments</div>
                 </div>
             </div>
 
             {Object.keys(stats.byGrade).length > 0 && (
-                <div className="glass-card" style={{ padding: '24px' }}>
+                <div className="glass-card" style={{ padding: '24px', marginBottom: '20px' }}>
                     <h3 style={{ marginBottom: '16px', fontSize: '1rem' }}>Classes per Grade</h3>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {Array.from({ length: 10 }, (_, i) => i + 1).map(grade => (
@@ -118,6 +132,32 @@ export default function AdminDashboard() {
                                 fontSize: '0.82rem',
                             }}>
                                 <strong>Class {grade}</strong>: {stats.byGrade[grade] || 0}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Recent Comments */}
+            {stats.recentComments.length > 0 && (
+                <div className="glass-card" style={{ padding: '24px' }}>
+                    <h3 style={{ marginBottom: '16px', fontSize: '1rem' }}>Recent Comments</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {stats.recentComments.map(c => (
+                            <div key={c.id} style={{
+                                padding: '12px 14px',
+                                borderRadius: '8px',
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.04)',
+                                fontSize: '0.85rem',
+                            }}>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '4px', alignItems: 'center' }}>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{c.name}</strong>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                        on Class {c.class_title || c.class_id}
+                                    </span>
+                                </div>
+                                <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{c.message}</p>
                             </div>
                         ))}
                     </div>

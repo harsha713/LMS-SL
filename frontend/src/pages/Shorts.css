@@ -44,7 +44,8 @@
 .short-card__video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #000;
     cursor: pointer;
 }
 
@@ -124,21 +125,76 @@
     color: #f472b6;
 }
 
-/* Progress */
+.short-card__like-count {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    margin-top: -10px;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Progress / Scrub Bar */
 .short-card__progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 14px;
+    padding-top: 10px;
+    background: transparent;
+    z-index: 10;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.short-card__progress::before {
+    content: '';
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     height: 3px;
     background: rgba(255, 255, 255, 0.15);
-    z-index: 10;
+    transition: height 0.15s ease;
+}
+
+.short-card__progress:hover::before,
+.short-card__progress--scrubbing::before {
+    height: 5px;
 }
 
 .short-card__progress-bar {
-    height: 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
     background: linear-gradient(90deg, var(--brand-blue-light), var(--accent-purple));
-    transition: width 0.1s linear;
+    transition: height 0.15s ease;
+    pointer-events: none;
+}
+
+.short-card__progress:hover .short-card__progress-bar,
+.short-card__progress--scrubbing .short-card__progress-bar {
+    height: 5px;
+}
+
+.short-card__progress-thumb {
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
+    transition: transform 0.15s ease;
+}
+
+.short-card__progress:hover .short-card__progress-thumb,
+.short-card__progress--scrubbing .short-card__progress-thumb {
+    transform: translateY(-50%) scale(1);
 }
 
 /* Nav */

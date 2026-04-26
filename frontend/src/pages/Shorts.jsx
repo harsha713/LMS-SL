@@ -10,6 +10,7 @@ export default function Shorts() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const containerRef = useRef(null);
+    const videoRef = useRef(null);
 
     useEffect(() => {
         fetch(`${API_BASE}/shorts`)
@@ -32,11 +33,25 @@ export default function Shorts() {
         });
     }, [shorts.length]);
 
-    // Keyboard nav
+    // Keyboard nav — ArrowUp/Down for navigation, Space for play/pause
     useEffect(() => {
         const handler = (e) => {
-            if (e.key === 'ArrowDown' || e.key === 'j') goTo(1);
-            if (e.key === 'ArrowUp' || e.key === 'k') goTo(-1);
+            // Ignore if user is typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'ArrowDown' || e.key === 'j') {
+                e.preventDefault();
+                goTo(1);
+            }
+            if (e.key === 'ArrowUp' || e.key === 'k') {
+                e.preventDefault();
+                goTo(-1);
+            }
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                const v = videoRef.current;
+                if (v) v.paused ? v.play() : v.pause();
+            }
         };
         window.addEventListener('keydown', handler);
         return () => window.removeEventListener('keydown', handler);
@@ -87,8 +102,7 @@ export default function Shorts() {
                     <ShortCard
                         key={shorts[currentIndex].id}
                         short={shorts[currentIndex]}
-                        index={currentIndex}
-                        total={shorts.length}
+                        videoRef={videoRef}
                     />
                 </AnimatePresence>
 
@@ -115,13 +129,18 @@ export default function Shorts() {
     );
 }
 
-function ShortCard({ short }) {
-    const videoRef = useRef(null);
+function ShortCard({ short, videoRef }) {
     const [muted, setMuted] = useState(false);
-    const [liked, setLiked] = useState(false);
+    const [liked, setLiked] = useState(() => {
+        const stored = localStorage.getItem(`short_liked_${short.id}`);
+        return stored === 'true';
+    });
+    const [likeCount, setLikeCount] = useState(short.likes || 0);
     const [progress, setProgress] = useState(0);
     const [showHeart, setShowHeart] = useState(false);
+    const [isScrubbing, setIsScrubbing] = useState(false);
     const tapTimeout = useRef(null);
+    const progressBarRef = useRef(null);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -132,22 +151,76 @@ function ShortCard({ short }) {
     }, [short.id]);
 
     const handleTimeUpdate = () => {
+        if (isScrubbing) return; // Don't update progress while user is dragging
         const v = videoRef.current;
         if (v && v.duration) {
             setProgress((v.currentTime / v.duration) * 100);
         }
     };
 
+    // ===== Scrubbing / Timeline Dragging =====
+    const seekToPosition = (clientX) => {
+        const bar = progressBarRef.current;
+        const video = videoRef.current;
+        if (!bar || !video || !video.duration) return;
+
+        const rect = bar.getBoundingClientRect();
+        const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+        const pct = x / rect.width;
+        video.currentTime = pct * video.duration;
+        setProgress(pct * 100);
+    };
+
+    const handleScrubStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsScrubbing(true);
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        seekToPosition(clientX);
+
+        const handleMove = (ev) => {
+            const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+            seekToPosition(cx);
+        };
+        const handleEnd = () => {
+            setIsScrubbing(false);
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleEnd);
+            window.removeEventListener('touchmove', handleMove);
+            window.removeEventListener('touchend', handleEnd);
+        };
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('touchend', handleEnd);
+    };
+
+    // ===== Like Logic =====
+    const toggleLike = async () => {
+        const newLiked = !liked;
+        setLiked(newLiked);
+        localStorage.setItem(`short_liked_${short.id}`, newLiked.toString());
+
+        try {
+            const endpoint = newLiked ? 'like' : 'unlike';
+            const res = await fetch(`${API_BASE}/shorts/${short.id}/${endpoint}`, { method: 'POST' });
+            const data = await res.json();
+            if (data.likes !== undefined) setLikeCount(data.likes);
+        } catch (err) {
+            setLiked(!newLiked);
+            localStorage.setItem(`short_liked_${short.id}`, (!newLiked).toString());
+        }
+    };
+
     const handleDoubleClick = () => {
         if (!liked) {
-            setLiked(true);
+            toggleLike();
             setShowHeart(true);
             setTimeout(() => setShowHeart(false), 800);
         }
     };
 
     const handleClick = (e) => {
-        // Simple double-click detection
         if (tapTimeout.current) {
             clearTimeout(tapTimeout.current);
             tapTimeout.current = null;
@@ -155,7 +228,6 @@ function ShortCard({ short }) {
         } else {
             tapTimeout.current = setTimeout(() => {
                 tapTimeout.current = null;
-                // Single tap - toggle play/pause
                 const v = videoRef.current;
                 if (v) v.paused ? v.play() : v.pause();
             }, 250);
@@ -206,19 +278,27 @@ function ShortCard({ short }) {
                 <div className="short-card__actions">
                     <button
                         className={`short-card__action ${liked ? 'short-card__action--liked' : ''}`}
-                        onClick={() => setLiked(!liked)}
+                        onClick={toggleLike}
                     >
                         <Heart size={24} fill={liked ? '#f472b6' : 'none'} />
                     </button>
+                    <span className="short-card__like-count">{likeCount}</span>
                     <button className="short-card__action" onClick={() => setMuted(!muted)}>
                         {muted ? <VolumeX size={24} /> : <Volume2 size={24} />}
                     </button>
                 </div>
             </div>
 
-            {/* Progress bar */}
-            <div className="short-card__progress">
-                <div className="short-card__progress-bar" style={{ width: `${progress}%` }} />
+            {/* Draggable Progress / Scrub Bar */}
+            <div
+                className={`short-card__progress ${isScrubbing ? 'short-card__progress--scrubbing' : ''}`}
+                ref={progressBarRef}
+                onMouseDown={handleScrubStart}
+                onTouchStart={handleScrubStart}
+            >
+                <div className="short-card__progress-bar" style={{ width: `${progress}%` }}>
+                    <div className="short-card__progress-thumb" />
+                </div>
             </div>
         </motion.div>
     );

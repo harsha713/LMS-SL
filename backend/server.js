@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth');
 const classRoutes = require('./routes/classes');
 const shortRoutes = require('./routes/shorts');
+const commentRoutes = require('./routes/comments');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -35,6 +36,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/shorts', shortRoutes);
+app.use('/api/comments', commentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

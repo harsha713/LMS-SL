@@ -1,0 +1,264 @@
+================================================================
+ SAARADAA LEARKNOWATIONS LMS
+ COMPLETE DEPLOYMENT GUIDE
+================================================================
+
+WHAT THIS PROJECT HAS:
+  1. A FRONTEND (the website students see)
+     - Built with React
+     - After building, it becomes normal HTML/CSS/JS files
+     - Can be hosted ANYWHERE (Hostinger, Nginx, etc.)
+
+  2. A BACKEND (the server that stores videos + data)
+     - Built with Node.js + Express
+     - Runs on your Ubuntu server
+     - Handles video uploads, comments, likes
+     - Stores everything in a SQLite database file
+
+================================================================
+ YOUR SETUP (what goes where)
+================================================================
+
+  ┌─────────────────────────────────┐
+  │     HOSTINGER (your domain)     │
+  │  Hosts the static frontend      │
+  │  (HTML/CSS/JS files)            │
+  │  Students visit this URL        │
+  └──────────┬──────────────────────┘
+             │ API calls go to ↓
+  ┌──────────┴──────────────────────┐
+  │  YOUR UBUNTU SERVER             │
+  │  (old laptop at office)         │
+  │                                 │
+  │  Runs the backend (Node.js)     │
+  │  Stores all uploaded videos     │
+  │  Exposed via Cloudflare Tunnel  │
+  └─────────────────────────────────┘
+
+================================================================
+ STEP 1: PREPARE YOUR SERVER
+================================================================
+
+Run these commands on your Ubuntu server (the laptop):
+
+  # Update the system
+  sudo apt update && sudo apt upgrade -y
+
+  # Install Node.js 20
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt install -y nodejs
+
+  # Install ffmpeg (converts .mov videos to .mp4)
+  sudo apt install -y ffmpeg
+
+  # Install PM2 (keeps your backend running 24/7, even after reboot)
+  sudo npm install -g pm2
+
+  # Verify everything installed correctly
+  node -v       # should show v20.x.x
+  npm -v        # should show 10.x.x
+  ffmpeg -version
+  pm2 --version
+
+================================================================
+ STEP 2: COPY THE BACKEND TO YOUR SERVER
+================================================================
+
+Copy ONLY the backend folder to your server.
+The frontend does NOT go on the server.
+
+  # On your server, create a folder for the project
+  sudo mkdir -p /var/www/lms
+  sudo chown -R $USER:$USER /var/www/lms
+
+  # Copy the backend folder (from your dev machine to the server)
+  # Option A: If developing on the same machine
+  cp -r /path/to/LMS_2/backend /var/www/lms/backend
+
+  # Option B: From a different machine via SCP
+  scp -r LMS_2/backend/ youruser@server-ip:/var/www/lms/
+
+================================================================
+ STEP 3: CONFIGURE THE BACKEND
+================================================================
+
+  cd /var/www/lms/backend
+
+  # Install dependencies
+  npm install --production
+
+  # Edit the .env file with your own password and secret
+  nano .env
+
+  # Change these values:
+  #   ADMIN_PASSWORD=PUT_YOUR_OWN_STRONG_PASSWORD_HERE
+  #   JWT_SECRET=PASTE_A_RANDOM_STRING_HERE
+  #   PORT=3001
+
+  # Generate a random secret string (copy the output):
+  openssl rand -hex 32
+
+  # Make sure upload folders exist
+  mkdir -p uploads/classes uploads/shorts uploads/thumbnails
+
+================================================================
+ STEP 4: START THE BACKEND WITH PM2
+================================================================
+
+  cd /var/www/lms/backend
+
+  # Test it works first
+  node server.js
+  # You should see: "LMS Backend running on http://localhost:3001"
+  # Press Ctrl+C to stop
+
+  # Now start it with PM2 (this keeps it running 24/7)
+  pm2 start server.js --name "lms-backend"
+
+  # Make it auto-start after reboot
+  pm2 startup
+  # (PM2 will print a command — copy and run that command)
+  pm2 save
+
+  # Verify it's running
+  pm2 status
+  # Should show "lms-backend" with status "online"
+
+  # Test the API
+  curl http://localhost:3001/api/health
+  # Should return: {"status":"ok",...}
+
+================================================================
+ STEP 5: EXPOSE BACKEND VIA CLOUDFLARE TUNNEL
+================================================================
+
+Since you already have a Cloudflare Tunnel running on this server,
+you just need to add one more hostname entry.
+
+  # Edit your tunnel config
+  nano ~/.cloudflared/config.yml
+
+  # Add this entry under "ingress:" (BEFORE the catch-all):
+  #
+  #   - hostname: api.yourdomain.com
+  #     service: http://localhost:3001
+  #
+
+  # Add DNS record in Cloudflare Dashboard:
+  #   Type: CNAME
+  #   Name: api (or whatever subdomain you want)
+  #   Target: YOUR_TUNNEL_ID.cfargotunnel.com
+  #   Proxy: ON (orange cloud)
+
+  # Restart the tunnel
+  sudo systemctl restart cloudflared
+
+  # After 1-2 minutes, test it:
+  curl https://api.yourdomain.com/api/health
+
+================================================================
+ STEP 6: BUILD THE FRONTEND FOR HOSTINGER
+================================================================
+
+This is done on your development machine (NOT the server).
+
+  cd /path/to/LMS_2/frontend
+
+  # Tell the frontend where your backend lives
+  # Create a file called .env.production with one line:
+  echo 'VITE_API_URL=https://api.yourdomain.com/api' > .env.production
+
+  # Build the static files
+  npm run build
+
+  # This creates a "dist" folder containing:
+  #   index.html
+  #   assets/  (JS, CSS, images, fonts)
+  #
+  # These are NORMAL static files. No Node.js needed to serve them.
+
+================================================================
+ STEP 7: UPLOAD TO HOSTINGER
+================================================================
+
+  1. Log in to your Hostinger account
+  2. Go to File Manager
+  3. Navigate to public_html/ (delete any old files in there)
+  4. Upload EVERYTHING inside the "dist" folder:
+     - index.html
+     - assets/ folder
+     - sl-logo.png
+     - (any other files in dist/)
+  5. That's it. Your site is live at your domain.
+
+  IMPORTANT: Whenever you make changes to the frontend code,
+  you need to repeat Step 6 (npm run build) and re-upload
+  the new dist/ files to Hostinger.
+
+================================================================
+ STEP 8: CONVERT YOUR VIDEOS (one-time setup)
+================================================================
+
+Your existing .mov videos need to be converted to .mp4
+before uploading through the admin portal.
+
+  # Convert a single video
+  ffmpeg -i "video.mov" -c:v libx264 -crf 23 -preset medium \
+    -c:a aac -b:a 128k -movflags +faststart "video.mp4"
+
+  # Convert ALL .mov files in a folder at once
+  for f in *.mov; do
+    ffmpeg -i "$f" -c:v libx264 -crf 23 -preset medium \
+      -c:a aac -b:a 128k -movflags +faststart "${f%.mov}.mp4"
+  done
+
+  WHAT THE FLAGS MEAN:
+    -crf 23    = Quality. Lower = better but bigger file.
+                 18-20 = high quality, 23 = balanced, 28 = small file
+    -movflags  = Makes video playable while still downloading
+    -preset    = Speed. "medium" is a good balance.
+
+================================================================
+ QUICK REFERENCE: PM2 COMMANDS
+================================================================
+
+  pm2 status                 → See if backend is running
+  pm2 logs lms-backend       → See server logs (errors, requests)
+  pm2 restart lms-backend    → Restart after code changes
+  pm2 stop lms-backend       → Stop the backend
+  pm2 monit                  → Live monitoring dashboard
+
+================================================================
+ QUICK REFERENCE: UPLOADING CONTENT
+================================================================
+
+  1. Go to https://yourdomain.com/admin
+  2. Enter your admin password
+  3. Upload Class → Select grade, fill title/subject, pick .mp4 file
+  4. Upload Short → Fill title, pick vertical .mp4 file
+  5. Manage → View/delete uploaded content, see likes & comments
+
+  NOTE: Cloudflare free plan limits uploads to 100MB through the
+  tunnel. For bigger videos (like full class recordings), upload
+  from within your local network using:
+    http://SERVER-LOCAL-IP:3001 (direct, no tunnel)
+
+================================================================
+ TROUBLESHOOTING
+================================================================
+
+  "Backend not reachable"
+    → Check: pm2 status (is it online?)
+    → Check: curl http://localhost:3001/api/health
+    → Check: pm2 logs lms-backend (any errors?)
+
+  "Video won't play in browser"
+    → The video is probably .mov format. Convert to .mp4 first.
+
+  "Upload fails / times out"
+    → File might be too big for Cloudflare tunnel (100MB limit)
+    → Upload from local network instead
+
+  "Changes not showing on website"
+    → You need to rebuild: cd frontend && npm run build
+    → Then re-upload dist/ files to Hostinger

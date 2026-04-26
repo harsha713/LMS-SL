@@ -9,7 +9,7 @@ export default function Footer() {
                 <div className="footer__brand">
                     <img src={logo} alt="SL" className="footer__logo" />
                     <div>
-                        <h4 className="footer__title">Saaradaa Learknowations</h4>
+                        <h4 className="footer__title">Saaradaa Learknowations Pvt. Ltd.</h4>
                         <p className="footer__tagline">Empowering young minds through quality education.</p>
                     </div>
                 </div>

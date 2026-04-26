@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Play, Clock, BookOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Play, Clock, BookOpen, Send, MessageCircle, Trash2 } from 'lucide-react';
 import './ClassDetail.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -69,6 +69,9 @@ export default function ClassDetail() {
                                 <h3>{activeVideo.title}</h3>
                                 <span className="class-detail__subject-tag">{activeVideo.subject}</span>
                             </div>
+
+                            {/* Comments Section */}
+                            <CommentSection classId={activeVideo.id} />
                         </motion.div>
                     )}
 
@@ -126,6 +129,152 @@ export default function ClassDetail() {
                     )}
                 </div>
             </section>
+        </div>
+    );
+}
+
+/* ===== Comment Section Component ===== */
+function CommentSection({ classId }) {
+    const [comments, setComments] = useState([]);
+    const [name, setName] = useState(() => localStorage.getItem('comment_name') || '');
+    const [message, setMessage] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [loadingComments, setLoadingComments] = useState(true);
+
+    const fetchComments = () => {
+        fetch(`${API_BASE}/comments?class_id=${classId}`)
+            .then(res => res.json())
+            .then(data => {
+                setComments(data.comments || []);
+                setLoadingComments(false);
+            })
+            .catch(() => setLoadingComments(false));
+    };
+
+    useEffect(() => {
+        setLoadingComments(true);
+        fetchComments();
+    }, [classId]);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!name.trim() || !message.trim()) return;
+
+        setSubmitting(true);
+        localStorage.setItem('comment_name', name.trim());
+
+        try {
+            const res = await fetch(`${API_BASE}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    class_id: classId,
+                    name: name.trim(),
+                    message: message.trim(),
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setComments(prev => [data.comment, ...prev]);
+                setMessage('');
+            }
+        } catch (err) {
+            console.error('Failed to post comment');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const formatTime = (dateStr) => {
+        // SQLite stores UTC timestamps without 'Z' suffix — append it so JS parses as UTC
+        const utcStr = dateStr.endsWith('Z') ? dateStr : dateStr + 'Z';
+        const d = new Date(utcStr);
+        const now = new Date();
+        const diffMs = now - d;
+        if (diffMs < 0) return 'Just now'; // future guard
+        const mins = Math.floor(diffMs / 60000);
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        return d.toLocaleDateString();
+    };
+
+    return (
+        <div className="comments-section">
+            <div className="comments-section__header">
+                <MessageCircle size={18} />
+                <h4>Comments ({comments.length})</h4>
+            </div>
+
+            {/* Post form */}
+            <form className="comments-form" onSubmit={handleSubmit}>
+                <input
+                    type="text"
+                    className="form-input comments-form__name"
+                    placeholder="Your name"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    maxLength={50}
+                    required
+                />
+                <div className="comments-form__row">
+                    <input
+                        type="text"
+                        className="form-input comments-form__message"
+                        placeholder="Write a comment or question..."
+                        value={message}
+                        onChange={e => setMessage(e.target.value)}
+                        maxLength={1000}
+                        required
+                    />
+                    <button
+                        type="submit"
+                        className="comments-form__send"
+                        disabled={submitting || !name.trim() || !message.trim()}
+                    >
+                        <Send size={16} />
+                    </button>
+                </div>
+            </form>
+
+            {/* Comments list */}
+            {loadingComments ? (
+                <div className="comments-loading">
+                    <div className="loading-spinner" />
+                </div>
+            ) : comments.length === 0 ? (
+                <p className="comments-empty">No comments yet. Be the first to ask a question!</p>
+            ) : (
+                <div className="comments-list">
+                    <AnimatePresence>
+                        {comments.map((c) => (
+                            <motion.div
+                                key={c.id}
+                                className="comment-item"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="comment-item__avatar">
+                                    {c.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="comment-item__body">
+                                    <div className="comment-item__meta">
+                                        <span className="comment-item__name">{c.name}</span>
+                                        <span className="comment-item__time">{formatTime(c.created_at)}</span>
+                                    </div>
+                                    <p className="comment-item__text">{c.message}</p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </AnimatePresence>
+                </div>
+            )}
         </div>
     );
 }
