@@ -14,6 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
+app.set('trust proxy', 1); // Trust first proxy (Cloudflare Tunnel)
 app.use(cors());
 app.use(express.json());
 
@@ -41,6 +42,16 @@ app.use('/api/comments', commentRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ===== Serve Frontend Static Files =====
+// The "public" folder contains the built React app (copied from frontend/dist/)
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
+// Catch-all: any route that isn't /api or /uploads → serve index.html (React Router handles it)
+app.get('{*path}', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 // Error handling
