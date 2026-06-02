@@ -11,6 +11,8 @@ export default function Shorts() {
     const [loading, setLoading] = useState(true);
     const containerRef = useRef(null);
     const videoRef = useRef(null);
+    const touchStartY = useRef(null);
+    const touchStartTime = useRef(null);
 
     useEffect(() => {
         fetch(`${API_BASE}/shorts`)
@@ -73,6 +75,31 @@ export default function Shorts() {
         return () => el?.removeEventListener('wheel', handler);
     }, [goTo]);
 
+    // Touch swipe nav (mobile)
+    const handleTouchStart = (e) => {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartTime.current = Date.now();
+    };
+
+    const handleTouchMove = (e) => {
+        if (touchStartY.current !== null) {
+            e.preventDefault();
+        }
+    };
+
+    const handleTouchEnd = (e) => {
+        if (touchStartY.current === null) return;
+        const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+        const deltaTime = Date.now() - touchStartTime.current;
+
+        if (Math.abs(deltaY) > 50 && deltaTime < 500) {
+            goTo(deltaY > 0 ? -1 : 1);
+        }
+
+        touchStartY.current = null;
+        touchStartTime.current = null;
+    };
+
     if (loading) {
         return (
             <div className="page-wrapper shorts-page">
@@ -97,7 +124,12 @@ export default function Shorts() {
 
     return (
         <div className="page-wrapper shorts-page" ref={containerRef}>
-            <div className="shorts-container">
+            <div
+                    className="shorts-container"
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                >
                 <AnimatePresence mode="wait">
                     <ShortCard
                         key={shorts[currentIndex].id}

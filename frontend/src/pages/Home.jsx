@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Play, BookOpen, GraduationCap, Sparkles, ArrowRight, Zap } from 'lucide-react';
 import BorderGlow from '../components/BorderGlow';
+import NewContentBanner from '../components/NewContentBanner';
 import logo from '../assets/sl-logo.png';
 import './Home.css';
 
@@ -135,6 +136,9 @@ export default function Home() {
                     </motion.div>
                 </div>
             </section>
+
+            {/* ===== NEW CONTENT BANNER ===== */}
+            <NewContentBanner />
 
             {/* ===== FEATURES SECTION ===== */}
             <section className="features">

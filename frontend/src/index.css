@@ -289,6 +289,14 @@ button {
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 768px) {
+  :root {
+    --navbar-height: 56px;
+  }
+
+  .page-wrapper {
+    padding-top: 0;
+  }
+
   .container {
     padding: 0 16px;
   }

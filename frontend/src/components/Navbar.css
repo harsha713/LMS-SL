@@ -177,15 +177,46 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    :root {
+        --navbar-height: 56px;
+    }
+
+    .navbar {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 0;
+        background: rgba(6, 8, 15, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--bg-glass-border);
+        height: 56px;
+        transition: none;
+        transform: translateZ(0);
+    }
+
+    .navbar--scrolled {
+        background: rgba(6, 8, 15, 0.92);
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .navbar__logo-img {
+        width: 32px;
+        height: 32px;
+    }
+
+    .navbar__logo-text {
+        display: none;
+    }
+
+    .navbar__brand {
+        display: none;
+    }
+
     .navbar__links {
         display: none;
     }
 
     .navbar__hamburger {
         display: flex;
-    }
-
-    .navbar__logo-text {
-        display: none;
     }
 }

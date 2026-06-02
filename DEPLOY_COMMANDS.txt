@@ -1,0 +1,146 @@
+============================================================
+  LMS DEPLOYMENT COMMANDS
+  Saaradaa Learknowations Pvt. Ltd.
+  Step-by-step guide to build & push changes to server
+============================================================
+
+PREREQUISITES:
+  - You are on the development PC (hostname: praram)
+  - You have SSH access to the server (slplserver@192.168.1.150)
+  - Frontend source is at: /mnt/Fire/E2E/LMS_2/frontend/
+  - Backend source is at: /mnt/Fire/E2E/LMS_2/backend/
+  - Server docker root: /srv/docker/
+
+============================================================
+  SCENARIO A: Full Deploy (frontend + backend changes)
+============================================================
+
+  STEP 1: Build the frontend
+  --------------------------------------------------------
+  cd /mnt/Fire/E2E/LMS_2/frontend
+  npm run build
+
+  STEP 2: Copy built files into backend's public folder
+  --------------------------------------------------------
+  cp -r /mnt/Fire/E2E/LMS_2/frontend/dist/* /mnt/Fire/E2E/LMS_2/backend/public/
+
+  STEP 3: Push entire backend folder to the server
+  --------------------------------------------------------
+  scp -r /mnt/Fire/E2E/LMS_2/backend/* slplserver@192.168.1.150:/srv/docker/lms/
+
+  STEP 4: SSH into the server and rebuild the LMS container
+  --------------------------------------------------------
+  ssh slplserver@192.168.1.150
+  cd /srv/docker
+  docker compose build lms
+  docker compose up -d lms
+
+  STEP 5: Copy new frontend files into the Docker volume
+           (IMPORTANT: volume overrides the image's public/ folder)
+  --------------------------------------------------------
+  sudo cp -r /srv/docker/lms/public/* /var/lib/docker/volumes/lms-public/_data/
+  docker compose restart lms
+
+  STEP 6: Verify it works
+  --------------------------------------------------------
+  docker compose logs -f lms
+  # Or in a separate terminal:
+  curl http://localhost:3002/api/health
+
+============================================================
+  SCENARIO B: Frontend-only changes (faster deploy)
+============================================================
+
+  Use this when you ONLY changed frontend code (no backend changes).
+
+  STEP 1: Build the frontend
+  --------------------------------------------------------
+  cd /mnt/Fire/E2E/LMS_2/frontend
+  npm run build
+
+  STEP 2: Copy built files directly to the Docker volume on server
+  --------------------------------------------------------
+  # First, SCP the dist folder to a temp location on the server
+  scp -r /mnt/Fire/E2E/LMS_2/frontend/dist/* slplserver@192.168.1.150:/tmp/lms-public/
+
+  STEP 3: SSH and copy into the Docker volume
+  --------------------------------------------------------
+  ssh slplserver@192.168.1.150
+  sudo cp -r /tmp/lms-public/* /var/lib/docker/volumes/lms-public/_data/
+  docker compose restart lms
+
+  STEP 4: Clean up temp files (optional)
+  --------------------------------------------------------
+  rm -rf /tmp/lms-public
+
+============================================================
+  SCENARIO C: Backend-only changes (no frontend changes)
+============================================================
+
+  STEP 1: Push backend code to server
+  --------------------------------------------------------
+  scp -r /mnt/Fire/E2E/LMS_2/backend/* slplserver@192.168.1.150:/srv/docker/lms/
+
+  STEP 2: Rebuild and restart
+  --------------------------------------------------------
+  ssh slplserver@192.168.1.150
+  cd /srv/docker
+  docker compose build lms
+  docker compose up -d lms
+
+============================================================
+  SCENARIO D: Docker compose or env changes
+============================================================
+
+  STEP 1: Push updated compose file
+  --------------------------------------------------------
+  scp /mnt/Fire/E2E/server-docker/docker-compose.yml slplserver@192.168.1.150:/srv/docker/docker-compose.yml
+
+  STEP 2: Apply changes
+  --------------------------------------------------------
+  ssh slplserver@192.168.1.150
+  cd /srv/docker
+  docker compose up -d
+
+============================================================
+  USEFUL COMMANDS (run on server from /srv/docker)
+============================================================
+
+  # View container status
+  docker compose ps
+
+  # View live logs for a specific service
+  docker compose logs -f lms
+
+  # View last 50 lines of logs
+  docker compose logs --tail 50 lms
+
+  # Restart a single service
+  docker compose restart lms
+
+  # Full rebuild (no cache)
+  docker compose build --no-cache lms
+
+  # Check health
+  curl http://localhost:3002/api/health
+
+  # Check disk usage
+  docker system df
+
+  # Backup all Docker volumes
+  bash scripts/backup.sh
+
+  # View Docker volume contents
+  sudo ls /var/lib/docker/volumes/lms-public/_data/
+
+============================================================
+  QUICK DEPLOYMENT REFERENCE (one-liners)
+============================================================
+
+  # Full deploy (frontend + backend):
+  cd /mnt/Fire/E2E/LMS_2/frontend && npm run build && cp -r dist/* ../backend/public/ && scp -r /mnt/Fire/E2E/LMS_2/backend/* slplserver@192.168.1.150:/srv/docker/lms/
+
+  # Then on server:
+  cd /srv/docker && docker compose build lms && docker compose up -d lms && sudo cp -r /srv/docker/lms/public/* /var/lib/docker/volumes/lms-public/_data/ && docker compose restart lms
+
+============================================================
